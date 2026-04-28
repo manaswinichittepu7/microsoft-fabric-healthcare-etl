@@ -2,7 +2,7 @@
 Microsoft Fabric — Notebook 01: Bronze Ingestion
 Lakehouse: healthcare_lakehouse | Layer: Bronze
 Ingest raw claims from ADLS shortcut / Event Hub into Bronze Delta tables
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 # ── Cell 1: Imports & Config ──────────────────────────────────
