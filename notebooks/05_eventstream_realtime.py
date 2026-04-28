@@ -2,7 +2,7 @@
 Microsoft Fabric — Notebook 05: Real-Time Eventstream Ingestion
 Fabric Eventstream → KQL Database → Bronze Delta (Structured Streaming)
 Processes live claim submissions with sub-second latency
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 from pyspark.sql import functions as F
