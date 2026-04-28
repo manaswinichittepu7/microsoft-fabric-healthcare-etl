@@ -1,7 +1,7 @@
 """
 Microsoft Fabric ETL — Unit & Integration Tests
 Uses pytest + pyspark local session for notebook logic validation
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 import pytest
