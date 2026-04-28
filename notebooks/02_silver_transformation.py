@@ -2,7 +2,7 @@
 Microsoft Fabric — Notebook 02: Silver Transformation
 Lakehouse: healthcare_lakehouse | Layer: Silver
 Clean, validate, deduplicate, and MERGE Bronze → Silver
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 from pyspark.sql import functions as F
