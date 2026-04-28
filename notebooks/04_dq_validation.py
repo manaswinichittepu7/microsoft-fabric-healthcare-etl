@@ -2,7 +2,7 @@
 Microsoft Fabric — Notebook 04: Data Quality Validation & Alerting
 Runs post-load DQ checks on Silver and Gold tables
 Publishes results; triggers Data Activator alert on SLA breach
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 from pyspark.sql import functions as F
