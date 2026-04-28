@@ -2,7 +2,7 @@
 Microsoft Fabric — Notebook 03: Gold Aggregations
 Lakehouse: healthcare_lakehouse | Layer: Gold
 Build analytics-ready aggregation tables from Silver
-Author: Manaswini Chittepu | Senior Data Engineer
+
 """
 
 from pyspark.sql import functions as F
