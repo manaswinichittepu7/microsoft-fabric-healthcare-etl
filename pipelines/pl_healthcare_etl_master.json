@@ -1,0 +1,179 @@
+{
+  "name": "pl_healthcare_etl_master",
+  "description": "Master ETL pipeline: Bronze → Silver → Gold → DQ | Healthcare Claims",
+  "properties": {
+    "activities": [
+
+      {
+        "name": "Set batch_date",
+        "type": "SetVariable",
+        "typeProperties": {
+          "variableName": "batch_date",
+          "value": {
+            "value": "@formatDateTime(pipeline().TriggerTime, 'yyyy-MM-dd')",
+            "type": "Expression"
+          }
+        }
+      },
+
+      {
+        "name": "01 Bronze Ingestion",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "Set batch_date", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "notebookId": "01_bronze_ingestion",
+          "parameters": {
+            "batch_date": { "value": "@variables('batch_date')", "type": "string" }
+          },
+          "timeout": "01:00:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 300
+        }
+      },
+
+      {
+        "name": "Bronze Success Check",
+        "type": "IfCondition",
+        "dependsOn": [{ "activity": "01 Bronze Ingestion", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('01 Bronze Ingestion').output.exitValue.status, 'SUCCESS')",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "02 Silver Transformation",
+              "type": "TridentNotebook",
+              "typeProperties": {
+                "notebookId": "02_silver_transformation",
+                "parameters": {
+                  "batch_date": { "value": "@variables('batch_date')", "type": "string" }
+                },
+                "timeout": "02:00:00",
+                "retry": 1
+              }
+            }
+          ],
+          "ifFalseActivities": [
+            {
+              "name": "Alert Bronze Failure",
+              "type": "Office365",
+              "typeProperties": {
+                "to": "data-engineering@optum.com",
+                "subject": "⚠️ Fabric ETL: Bronze ingestion failed",
+                "body": {
+                  "value": "@concat('Bronze ingestion FAILED for batch_date=', variables('batch_date'), '. Pipeline: ', pipeline().RunId)",
+                  "type": "Expression"
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      {
+        "name": "03 Gold Aggregations",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "Bronze Success Check", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "notebookId": "03_gold_aggregations",
+          "parameters": {
+            "batch_date": { "value": "@variables('batch_date')", "type": "string" }
+          },
+          "timeout": "01:30:00",
+          "retry": 1
+        }
+      },
+
+      {
+        "name": "04 DQ Validation",
+        "type": "TridentNotebook",
+        "dependsOn": [{ "activity": "03 Gold Aggregations", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "notebookId": "04_dq_validation",
+          "parameters": {
+            "batch_date": { "value": "@variables('batch_date')", "type": "string" }
+          },
+          "timeout": "00:30:00"
+        }
+      },
+
+      {
+        "name": "DQ Gate",
+        "type": "IfCondition",
+        "dependsOn": [{ "activity": "04 DQ Validation", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('04 DQ Validation').output.exitValue.overall_status, 'PASS')",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "Refresh Warehouse Snapshot",
+              "type": "SqlServerStoredProcedure",
+              "typeProperties": {
+                "storedProcedureName": "[dbo].[sp_refresh_kpi_snapshot]",
+                "storedProcedureParameters": {
+                  "report_date": { "value": "@variables('batch_date')", "type": "String" }
+                }
+              },
+              "linkedServiceName": { "referenceName": "ls_fabric_warehouse" }
+            }
+          ],
+          "ifFalseActivities": [
+            {
+              "name": "Alert DQ Failure",
+              "type": "Office365",
+              "typeProperties": {
+                "to": "data-quality-team@optum.com",
+                "subject": "🚨 Fabric ETL: DQ SLA BREACH",
+                "body": {
+                  "value": "@concat('DQ FAILED for batch_date=', variables('batch_date'), '. Violations: ', string(activity('04 DQ Validation').output.exitValue.sla_violations))",
+                  "type": "Expression"
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      {
+        "name": "Pipeline Success Notification",
+        "type": "Office365",
+        "dependsOn": [{ "activity": "DQ Gate", "dependencyConditions": ["Succeeded"] }],
+        "typeProperties": {
+          "to": "data-engineering@optum.com",
+          "subject": {
+            "value": "@concat('✅ Fabric ETL complete | ', variables('batch_date'))",
+            "type": "Expression"
+          },
+          "body": {
+            "value": "@concat('Pipeline completed successfully.\\nbatch_date=', variables('batch_date'), '\\nRun: ', pipeline().RunId)",
+            "type": "Expression"
+          }
+        }
+      }
+
+    ],
+
+    "variables": {
+      "batch_date": { "type": "String", "defaultValue": "" }
+    },
+
+    "triggers": [
+      {
+        "name": "daily_2am_trigger",
+        "type": "ScheduleTrigger",
+        "typeProperties": {
+          "recurrence": {
+            "frequency": "Day",
+            "interval": 1,
+            "startTime": "2025-01-01T02:00:00Z",
+            "timeZone": "UTC",
+            "schedule": { "hours": [2], "minutes": [0] }
+          }
+        }
+      }
+    ]
+  }
+}

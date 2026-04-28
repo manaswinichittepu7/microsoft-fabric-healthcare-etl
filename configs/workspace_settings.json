@@ -1,0 +1,56 @@
+{
+  "workspace": {
+    "name": "healthcare-analytics-prod",
+    "description": "Production workspace for healthcare ETL pipeline — Medallion Architecture",
+    "capacity": "F64",
+    "region": "East US 2"
+  },
+  "lakehouse": {
+    "name": "healthcare_lakehouse",
+    "tables": {
+      "bronze": ["bronze_claims_raw", "bronze_claims_realtime", "bronze_ingestion_log"],
+      "silver": ["silver_claims", "quarantine_invalid_claims"],
+      "gold":   ["gold_daily_claims_kpi", "gold_provider_scorecard", "gold_member_360", "gold_diagnosis_trending"],
+      "audit":  ["dq_run_log"]
+    }
+  },
+  "warehouse": {
+    "name": "healthcare_warehouse",
+    "views": ["vw_exec_claims_dashboard", "vw_provider_tier_summary", "vw_high_risk_members", "vw_diagnosis_mom_trend"],
+    "procedures": ["sp_refresh_kpi_snapshot"]
+  },
+  "notebooks": {
+    "starter_pool": true,
+    "default_lakehouse": "healthcare_lakehouse",
+    "spark_version": "3.4",
+    "runtime": "1.2"
+  },
+  "spark_config": {
+    "spark.microsoft.delta.optimizeWrite.enabled": "true",
+    "spark.microsoft.delta.optimizeWrite.binSize": "1073741824",
+    "spark.sql.shuffle.partitions": "200",
+    "spark.databricks.delta.retentionDurationCheck.enabled": "false"
+  },
+  "pipeline": {
+    "name": "pl_healthcare_etl_master",
+    "schedule": "0 2 * * *",
+    "timezone": "UTC",
+    "alerts_email": "data-engineering@optum.com"
+  },
+  "eventstream": {
+    "name": "es_healthcare_claims",
+    "source": "Azure Event Hub",
+    "destination": "healthcare_lakehouse/bronze_claims_realtime"
+  },
+  "power_bi": {
+    "semantic_model": "healthcare_claims_model",
+    "mode": "DirectLake",
+    "reports": ["Claims Executive Dashboard", "Provider Scorecard", "Member Risk 360"]
+  },
+  "governance": {
+    "purview_account": "healthcare-purview-prod",
+    "sensitivity_labels": ["Confidential", "Highly Confidential - PHI"],
+    "row_level_security": true,
+    "column_masking": ["member_id", "provider_npi"]
+  }
+}
