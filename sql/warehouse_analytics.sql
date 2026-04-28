@@ -1,7 +1,7 @@
 -- ══════════════════════════════════════════════════════════════
 -- Microsoft Fabric Warehouse DDL
 -- Healthcare Claims Analytics — Gold Layer SQL Objects
--- Author: Manaswini Chittepu | Senior Data Engineer
+
 -- ══════════════════════════════════════════════════════════════
 
 -- ── 1. Lakehouse shortcut external tables ──────────────────────
